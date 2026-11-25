@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { parseChallengeCode } from '../game/challenge/code';
 import { navigate, useRoute } from './router';
+import { displayName, useAuth } from './auth';
 import { useSave } from './store';
 import { Home } from './pages/Home';
 import { Landing } from './pages/Landing';
@@ -18,6 +19,7 @@ const Modes = lazy(() => import('./pages/Modes').then((m) => ({ default: m.Modes
 const Garage = lazy(() => import('./pages/Garage').then((m) => ({ default: m.Garage })));
 const Journal = lazy(() => import('./pages/Journal').then((m) => ({ default: m.Journal })));
 const Base = lazy(() => import('./pages/Base').then((m) => ({ default: m.Base })));
+const Account = lazy(() => import('./pages/Account').then((m) => ({ default: m.Account })));
 const Soon = lazy(() => import('./pages/Soon').then((m) => ({ default: m.Soon })));
 
 const NAV: { to: string; label: string; match: string }[] = [
@@ -31,6 +33,7 @@ const NAV: { to: string; label: string; match: string }[] = [
   { to: 'biomes', label: 'Biomes', match: 'biomes' },
   { to: 'stats', label: 'Stats', match: 'stats' },
   { to: 'soon', label: 'Online', match: 'soon' },
+  { to: 'account', label: 'Account', match: 'account' },
   { to: 'settings', label: 'Settings', match: 'settings' },
 ];
 
@@ -52,6 +55,8 @@ function SavedResult({ keyParam }: { keyParam: string }) {
 
 export function App() {
   const route = useRoute();
+  const auth = useAuth();
+  const who = displayName(auth.session);
   const [first = '', second = '', third = ''] = route;
   const playing = first === 'play';
 
@@ -108,6 +113,9 @@ export function App() {
     case 'soon':
       page = <Soon />;
       break;
+    case 'account':
+      page = <Account />;
+      break;
     default:
       page = <Home />;
   }
@@ -122,7 +130,7 @@ export function App() {
           <nav className="nav__links" aria-label="Main">
             {NAV.map((n) => (
               <a key={n.to} href={`#/${n.to}`} className={`nav__link${first === n.match ? ' nav__link--on' : ''}`}>
-                {n.label}
+                {n.match === 'account' && who ? who : n.label}
               </a>
             ))}
           </nav>
@@ -133,7 +141,9 @@ export function App() {
       </main>
       {!playing ? (
         <footer className="foot">
-          <span>Local demo mode: progress is saved on this device only.</span>
+          <span>
+            {who ? `Signed in as ${who}. Progress is saved on this device; back it up from Account.` : 'Progress is saved on this device. An account is optional.'}
+          </span>
           <a href="#/admin">Admin (demo)</a>
         </footer>
       ) : null}

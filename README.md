@@ -27,6 +27,7 @@ Runs fully in the browser in **local demo mode** (no account, no server). Progre
 | 22 achievements with wearable titles, weekly missions, daily mystery reward, Daily Dig calendar, personal base | Working |
 | Installable PWA with offline play (manifest, service worker, icons) | Working in production builds |
 | Leaderboards (global, weekly, friends), Live Dig Duel, Squad Expedition, Community Excavation, accounts and sync, real-player rarity, admin editing | **Not built.** Needs the backend (`docs/BACKEND.md`). The UI says so and shows no fake players |
+| Account page: Google sign-in, email sign-up / sign-in / password reset, cloud backup and restore | Built, **needs your Supabase and Google credentials** (`docs/AUTH.md`). Tested only against a stand-in server, never a live project. Shows "not connected" until configured |
 | Seasonal events, limited-time biomes | Not built |
 
 See `GAME_DESIGN.md` for how the rules work.
@@ -38,7 +39,7 @@ Requires Node 20+.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 102 unit tests (Node built-in runner via tsx)
+npm test           # 130 unit tests (Node built-in runner via tsx)
 npm run typecheck
 npm run build      # outputs dist/
 npm run preview    # serve the production build
@@ -106,6 +107,7 @@ src/game/cosmetics/  cosmetic catalogue, unlock rules, mystery rewards
 src/game/progression/ achievements, weekly missions, run finalisation
 src/game/challenge/  Friend Challenge codes and result codes
 src/game/base/       personal base rooms and themes
+src/auth/            Supabase Auth client over plain fetch (no SDK)
 src/game/pixel/      sprites, terrain tiles, pixel font
 src/game/audio/      Web Audio sound engine
 src/ui/              React app: pages, components, store, router, share card

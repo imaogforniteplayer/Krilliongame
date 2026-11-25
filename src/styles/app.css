@@ -328,3 +328,12 @@ img.pixel-img, canvas { image-rendering: pixelated; image-rendering: crisp-edges
 .den { display: flex; flex-wrap: wrap; gap: 14px; }
 .den li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 18px; }
 .den__pet { height: 40px; width: auto; }
+
+/* Account */
+.notice--bad { border-color: var(--bad); color: #ffb3bd; }
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted); margin: 18px 0 10px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 3px; background: var(--line); }
+.authform { max-width: 420px; }
+.field input[type='email'], .field input[type='password'] { font-family: var(--font-body); font-size: 20px; background: var(--edge); color: var(--text); border: 3px solid var(--line); padding: 8px; min-height: 44px; width: 100%; }
+.field input[type='email']:focus-visible, .field input[type='password']:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }

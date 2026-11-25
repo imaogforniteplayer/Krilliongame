@@ -13,7 +13,7 @@ const ITEMS: Item[] = [
   { name: 'Squad Expedition', note: 'Up to four players share a digging target.', needs: 'Realtime backend' },
   { name: 'Global Community Excavation', note: 'One worldwide shaft built from real players\' answers.', needs: 'Online backend' },
   { name: 'Real-player rarity', note: 'Rarity blended with what players actually answer, with smoothing.', needs: 'Online backend' },
-  { name: 'Accounts and cross-device sync', note: 'Optional sign-in. Guest play always stays open.', needs: 'Online backend' },
+  { name: 'Automatic background sync', note: 'Sign-in and manual cloud backup already exist (see Account). Syncing on its own, and scores that count for rankings, need the server rules.', needs: 'Online backend' },
   { name: 'Seasonal events and limited-time biomes', note: 'Event content is not built yet.', needs: 'Content' },
   { name: 'Weekly and monthly leaderboards, friends and rivals', note: 'Need real player accounts.', needs: 'Online backend' },
 ];
