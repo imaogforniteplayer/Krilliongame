@@ -2,6 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from 'react';
 import { audio } from '../game/audio/audio';
 import { dailyKey } from '../game/daily/challenge';
+import { resolveLook } from '../game/cosmetics/cosmetics';
+import type { Look } from '../game/cosmetics/cosmetics';
+import { unlockContext } from '../game/progression/context';
+import { setMinerLook } from '../game/render/actors';
 import { loadSave, persistSave } from '../game/storage';
 import type { SaveData } from '../game/storage';
 
@@ -36,6 +40,9 @@ export function SaveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reducedMotion = save.settings.reducedMotion ?? systemPrefersReducedMotion();
+
+  // Apply the equipped cosmetics to the miner everywhere (menus, share card, game scene).
+  setMinerLook(resolveLook(save.look, unlockContext(save)));
 
   useEffect(() => {
     audio.configure({ volume: save.settings.volume, musicOn: save.settings.musicOn, sfxOn: save.settings.sfxOn });
@@ -83,4 +90,10 @@ export function useNow(ms = 1000): number {
     return () => window.clearInterval(id);
   }, [ms]);
   return now;
+}
+
+/** The cosmetics the player is actually wearing (locked or unknown items fall back to defaults). */
+export function useLook(): Look {
+  const { save } = useSave();
+  return resolveLook(save.look, unlockContext(save));
 }

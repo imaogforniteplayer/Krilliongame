@@ -1,4 +1,6 @@
 import type { EquipmentId } from '../types';
+import { getCosmetic } from '../cosmetics/cosmetics';
+import type { Look } from '../cosmetics/cosmetics';
 import { makeCanvas, pixelLine, spriteFromRows } from '../pixel/canvas';
 
 /**
@@ -34,6 +36,60 @@ const C = {
 };
 
 let bodySprite: HTMLCanvasElement | null = null;
+let currentLook: Look | null = null;
+
+/**
+ * Applies cosmetics to the miner: helmet, outfit and glove colours, and the backpack. Purely
+ * visual. The look is global because there is only ever one player's miner on screen.
+ */
+export function setMinerLook(look: Look): void {
+  currentLook = look;
+  const h = getCosmetic(look.helmet)?.colors;
+  const o = getCosmetic(look.outfit)?.colors;
+  const g = getCosmetic(look.gloves)?.colors;
+  if (h) { C.helmet = h.main; C.helmetDark = h.dark; }
+  if (o) { C.shirt = o.main; C.shirtDark = o.dark; }
+  if (g) { C.glove = g.main; C.gloveDark = g.dark; }
+  bodySprite = null;
+}
+
+/** Changes whenever the look changes, so callers can cache images safely. */
+export function lookSignature(): string {
+  return currentLook ? Object.values(currentLook).join('|') : 'default';
+}
+
+const PACK_PAL = { o: '#1b1226', B: '#a56a34', b: '#c98a4a', k: '#ffd94a', T: '#5ec8e8', t: '#bff3ff', y: '#ffd94a', L: '#ffd94a', l: '#fff3a0', W: '#8fd6ff', w: '#e8f8ff' };
+const PACK_ROWS: Record<string, { rows: string[]; dy: number }> = {
+  'pack-satchel': { dy: 4, rows: ['..ooooo', '.oBBBBo', 'oBBBBBo', 'oBbbbBo', 'oBBBBBo', 'oBBkBBo', 'oBBBBBo', 'oBBBBBo', '.oBBBBo', '..ooooo'] },
+  'pack-tank': { dy: 1, rows: ['..oooo.', '..oyyo.', '.ooTTTo', 'oTTtTTo', 'oTTtTTo', 'oTTtTTo', 'oTTtTTo', 'oTTTTTo', 'oTTTTTo', '.ooooo.'] },
+  'pack-lantern': { dy: -3, rows: ['...ooo.', '..oLlLo', '..oLLLo', '...ooo.', '....o..', '....o..', '....o..', '....o..', '....oo.', '....oo.'] },
+  'pack-glider': { dy: 2, rows: ['....oo.', '...oWWo', '..oWWwo', '.oWWwoo', 'oWWwo..', '.oWo...', '..oo...'] },
+};
+const packSprites = new Map<string, HTMLCanvasElement>();
+
+/** Small icon of a backpack for menus, or null for "no backpack". */
+export function backpackIcon(id: string): HTMLCanvasElement | null {
+  const def = PACK_ROWS[id];
+  if (!def) return null;
+  let sprite = packSprites.get(id);
+  if (!sprite) {
+    sprite = spriteFromRows(id, def.rows, PACK_PAL);
+    packSprites.set(id, sprite);
+  }
+  return sprite;
+}
+
+function drawBackpack(ctx: CanvasRenderingContext2D, id: string, bx: number, top: number): void {
+  const def = PACK_ROWS[id];
+  if (!def) return;
+  let sprite = packSprites.get(id);
+  if (!sprite) {
+    sprite = spriteFromRows(id, def.rows, PACK_PAL);
+    packSprites.set(id, sprite);
+  }
+  // Drawn before the body so it appears to sit behind the miner's shoulder.
+  ctx.drawImage(sprite, Math.round(bx + 4), Math.round(top + def.dy));
+}
 
 function body(): HTMLCanvasElement {
   if (!bodySprite) {
@@ -391,6 +447,7 @@ export function drawDigger(ctx: CanvasRenderingContext2D, s: DiggerState): void 
   }
 
   const top = by - 20;
+  if (currentLook && currentLook.backpack !== 'pack-none') drawBackpack(ctx, currentLook.backpack, bx, top);
   ctx.drawImage(body(), Math.round(bx - 7), Math.round(top));
   drawFace(ctx, bx, top, mood, time, looking);
 

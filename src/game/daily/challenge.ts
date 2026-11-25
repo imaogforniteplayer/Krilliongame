@@ -78,3 +78,27 @@ function pickDiverse(pool: readonly Question[], count: number, rng: () => number
     .sort((a, b) => DIFFICULTY_RANK[a.q.difficulty] - DIFFICULTY_RANK[b.q.difficulty] || a.i - b.i)
     .map((x) => x.q);
 }
+
+/** Friend Challenge: everyone who enters the same code gets the same seven questions. */
+export function selectChallengeQuestions(code: string, pool: readonly Question[], count: number = GAME_CONFIG.questionsPerRun): Question[] {
+  const eligible = pool.filter((q) => q.status === 'active');
+  return pickDiverse(eligible, count, rngFromString(`deeper-challenge|${GAME_CONFIG.scoringVersion}|${code}`));
+}
+
+/**
+ * Survival Dig: questions get harder as the run goes on (easy, then medium, then hard).
+ * `perTier` questions are drawn from each difficulty, so a full survival run is 3 x perTier long.
+ */
+export function selectSurvivalQuestions(
+  pool: readonly Question[],
+  rng: () => number = Math.random,
+  perTier = 5,
+): Question[] {
+  const eligible = pool.filter((q) => q.status === 'active');
+  const out: Question[] = [];
+  for (const d of ['easy', 'medium', 'hard'] as const) {
+    const group = seededShuffle(eligible.filter((q) => q.difficulty === d), rng);
+    out.push(...group.slice(0, perTier));
+  }
+  return out;
+}

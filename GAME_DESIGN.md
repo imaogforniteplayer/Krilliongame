@@ -10,7 +10,16 @@ exist, but the automatic animation is the normal experience.
 - **Daily Dig.** Same seven questions for everyone, chosen deterministically from the UTC date, one per
   category where possible, ordered easy to hard. One ranked attempt per day. It rolls over at 00:00 UTC.
 - **Endless Dig / Practice.** Random runs, unlimited, never affect the ranked result or the streak.
-- Planned (need a backend): Friend Challenge, Live Dig Duel, Squad Expedition, Survival Dig.
+- **Themed packs.** Endless Dig limited to one theme (Animals, Geography, History, Gaming, Sport, Movies,
+  Science, Technology, Nature, Food, Mining, General). A pack is a filter over the question bank
+  (`src/game/packs.ts`), so a new pack is one entry. Every pack must have at least seven questions (tested).
+- **Survival Dig.** Fifteen questions ordered easy, then medium, then hard. Three lives: a wrong answer or
+  timeout costs one and the run ends at zero. It keeps its own record and never counts towards the normal
+  personal best, "deepest dig", or depth badges, because it is longer than a normal run.
+- **Friend Challenge.** A code like `DEEP-AB23CD` seeds the seven questions, so anyone entering it gets the
+  same set. Each code can be played once per device. Players swap short result codes to compare. With no
+  server these are self-reported (the checksum catches typos, not cheating), and the UI says so.
+- Planned (need a backend): Live Dig Duel, Squad Expedition, verified challenges.
 
 ## Answers
 Typed text is normalised (case, accents, punctuation, leading articles), singular/plural are unified, and
@@ -62,11 +71,25 @@ palette, tile art, decorations, ambient particles and music pitch. Only a near-p
 Unknown.
 
 ## Progression
-XP is lifetime points plus 25 per distinct discovery. Level n needs 100 x (n-1)^2 total XP. Streaks count
-consecutive ranked Daily Digs. Personal bests and a Daily history are kept.
+XP is lifetime points, 25 per distinct discovery, and bonus XP from claimed weekly missions. Level n needs
+100 x (n-1)^2 total XP. Streaks count consecutive ranked Daily Digs. Personal bests and a Daily history are kept.
+
+- **Achievements.** 22 badges (first dig, streaks, depth, rare answers, collection, perfect and clean runs,
+  Full Spectrum). Each unlocks a title the player can wear. Evaluated when a run is finalised, never removed.
+- **Weekly missions.** Three optional goals per ISO week with three different kinds of goal, the same for
+  everyone, chosen from the week key. They only give bonus XP.
+- **Garage.** 41 cosmetics in seven slots: helmet, outfit, gloves, backpack, pet, trail effect, emote.
+  They unlock by level, streak, depth, discoveries or achievements, and 3 items only come from the **daily
+  mystery reward** (one random locked item for each ranked Daily Dig, which can also be any other locked item). Cosmetics are display-only: no
+  scoring, rarity or digging code reads them.
+- **Pets.** Seven companions with their own animation and movement. They follow the miner and keep clear of
+  the big machines.
+- **Personal base.** Seven rooms that open by level and showcase badges, machines used, pets and rarest finds,
+  plus wall themes unlocked by depth. Nothing to manage.
+- **Journal.** Daily Dig calendar (UTC days), missions, achievements and recent digs.
 
 ## Fairness principles
-- Cosmetic content (planned) must never affect digging.
+- Cosmetic content must never affect digging, and nothing is for sale.
 - Scores must be server-authoritative before any leaderboard is shown. Until then results are private.
 - No fake players, fake leaderboards or fake community totals anywhere in the UI.
 - Spoilers: explanations and "other answers that count" appear only after a run is finished.

@@ -8,14 +8,14 @@ interface Item {
 
 const ITEMS: Item[] = [
   { name: 'Global, daily, weekly and friends leaderboards', note: 'Ranked results from real players.', needs: 'Online backend' },
-  { name: 'Friend Challenge', note: 'Invite by link or room code; both players get the same questions.', needs: 'Online backend' },
+  { name: 'Verified Friend Challenges', note: 'Codes and result swapping already work offline; server-checked results need the backend.', needs: 'Online backend' },
   { name: 'Live Dig Duel', note: 'Two miners digging side by side in real time.', needs: 'Realtime backend' },
   { name: 'Squad Expedition', note: 'Up to four players share a digging target.', needs: 'Realtime backend' },
   { name: 'Global Community Excavation', note: 'One worldwide shaft built from real players\' answers.', needs: 'Online backend' },
   { name: 'Real-player rarity', note: 'Rarity blended with what players actually answer, with smoothing.', needs: 'Online backend' },
   { name: 'Accounts and cross-device sync', note: 'Optional sign-in. Guest play always stays open.', needs: 'Online backend' },
-  { name: 'Customisation, pets and personal base', note: 'Cosmetics only. Nothing paid ever affects digging.', needs: 'More art and design' },
-  { name: 'Seasonal events and extra question packs', note: 'The pack system exists; more packs and events are content work.', needs: 'Content' },
+  { name: 'Seasonal events and limited-time biomes', note: 'Event content is not built yet.', needs: 'Content' },
+  { name: 'Weekly and monthly leaderboards, friends and rivals', note: 'Need real player accounts.', needs: 'Online backend' },
 ];
 
 export function Soon() {

@@ -12,3 +12,12 @@ createRoot(root).render(
     <App />
   </SaveProvider>,
 );
+
+// Offline support. Only registered in production builds, where hashed assets make caching safe.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      /* offline support is optional; the game works without it */
+    });
+  });
+}

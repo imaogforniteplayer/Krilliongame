@@ -18,7 +18,13 @@ const SQUARE: Record<RarityTier, string> = {
 };
 const MISS = '⬜'; // white
 
-const MODE_TITLE: Record<RunMode, string> = { daily: 'Daily Dig', endless: 'Endless Dig', practice: 'Practice Dig' };
+const MODE_TITLE: Record<RunMode, string> = {
+  daily: 'Daily Dig',
+  endless: 'Endless Dig',
+  practice: 'Practice Dig',
+  survival: 'Survival Dig',
+  challenge: 'Challenge',
+};
 
 /** Plain text for clipboards, chat apps and social posts. Never contains the answers themselves. */
 export function shareText(run: RunState, url = ''): string {
@@ -26,7 +32,7 @@ export function shareText(run: RunState, url = ''): string {
   const biome = biomeAtDepth(run.depth);
   const squares = run.answers.map((a) => (a.tier ? SQUARE[a.tier] : MISS)).join('');
   const lines = [
-    `DEEPER ${MODE_TITLE[run.mode]}${run.mode === 'daily' ? ` ${run.key}` : ''}`,
+    `DEEPER ${MODE_TITLE[run.mode]}${run.mode === 'daily' || run.mode === 'challenge' ? ` ${run.key}` : ''}`,
     `${formatMetres(run.depth)} deep · ${run.points} pts · ${biome.name}`,
     squares,
     s.rarest?.tier ? `Rarest: ${TIER_NAMES[s.rarest.tier]}` : 'Rarest: none this time',
@@ -93,7 +99,7 @@ export function renderShareCard(run: RunState): HTMLCanvasElement {
   ctx.fillStyle = 'rgba(10,7,22,0.82)';
   ctx.fillRect(10, 4, W - 20, 31);
   drawTextCentered(ctx, 'DEEPER', W / 2, 7, '#ffe28a', 4, '#6a3a12');
-  drawTextCentered(ctx, `${MODE_TITLE[run.mode]}${run.mode === 'daily' ? ` ${run.key}` : ''}`, W / 2, 29, '#cfe8ff', 1);
+  drawTextCentered(ctx, `${MODE_TITLE[run.mode]}${run.mode === 'daily' || run.mode === 'challenge' ? ` ${run.key}` : ''}`, W / 2, 29, '#cfe8ff', 1);
 
   // Plate with the headline numbers
   ctx.fillStyle = 'rgba(10,7,22,0.88)';

@@ -2,6 +2,11 @@ import { normalizeAnswer } from './answerValidation/normalize';
 import { previousDailyKey } from './daily/challenge';
 import type { RunMode, RunState } from './session';
 import { summarizeRun } from './session';
+import { defaultLook } from './cosmetics/cosmetics';
+import type { Look } from './cosmetics/cosmetics';
+import { evaluateAchievements } from './progression/achievements';
+import { applyRunToWeekly, emptyWeekly } from './progression/missions';
+import type { WeeklyState } from './progression/missions';
 import type { RarityTier } from './types';
 
 /**
@@ -41,6 +46,14 @@ export interface UnknownAnswer {
   firstSeen: number;
 }
 
+/** A Friend Challenge this player has finished on this device (one attempt per code). */
+export interface ChallengeRecord {
+  code: string;
+  points: number;
+  depth: number;
+  finishedAt: number;
+}
+
 export interface SaveData {
   version: 1;
   settings: Settings;
@@ -60,6 +73,21 @@ export interface SaveData {
   /** Highest depth ever reached in any mode (unlocks the biome map). */
   deepestEver: number;
   intro: { seenHowTo: boolean };
+  /** Achievement id → when it was earned. */
+  achievements: Record<string, number>;
+  /** Achievement id whose title the player wears. */
+  title: string | null;
+  /** Cosmetics granted by daily mystery rewards. */
+  unlockedCosmetics: string[];
+  /** What the miner is currently wearing. Locked or unknown ids fall back to defaults when resolved. */
+  look: Look;
+  /** XP from claimed weekly missions. */
+  bonusXp: number;
+  weekly: WeeklyState;
+  base: { theme: string };
+  challenges: Record<string, ChallengeRecord>;
+  /** Survival Dig is longer than a normal run, so it keeps its own record. */
+  survivalBest: { answers: number; points: number; depth: number };
 }
 
 export const MAX_UNKNOWN = 200;
@@ -84,6 +112,15 @@ export function defaultSave(): SaveData {
     appliedRunIds: [],
     deepestEver: 0,
     intro: { seenHowTo: false },
+    achievements: {},
+    title: null,
+    unlockedCosmetics: [],
+    look: defaultLook(),
+    bonusXp: 0,
+    weekly: emptyWeekly(),
+    base: { theme: 'soil' },
+    challenges: {},
+    survivalBest: { answers: 0, points: 0, depth: 0 },
   };
 }
 
@@ -173,16 +210,37 @@ export function applyFinishedRun(save: SaveData, run: RunState, now: number): Sa
         }
       : save.dailyResults;
 
-  return {
+  // Survival Dig is much longer than a normal run, so it must not inflate "deepest ever" or the
+  // single-run personal best that depth badges and cosmetics are measured against.
+  const countsForBests = run.mode !== 'survival';
+  const accepted = summary.accepted;
+
+  const challenges =
+    run.mode === 'challenge' && !save.challenges[run.key]
+      ? { ...save.challenges, [run.key]: { code: run.key, points: run.points, depth: run.depth, finishedAt: run.finishedAt } }
+      : save.challenges;
+
+  const applied: SaveData = {
     ...save,
     dailyResults,
+    challenges,
     activeRun: save.activeRun?.id === run.id ? null : save.activeRun,
     collection,
     streak: run.mode === 'daily' ? nextStreak(save.streak, run.key) : save.streak,
-    personalBest: {
-      points: Math.max(save.personalBest.points, run.points),
-      depth: Math.max(save.personalBest.depth, run.depth),
-    },
+    personalBest: countsForBests
+      ? {
+          points: Math.max(save.personalBest.points, run.points),
+          depth: Math.max(save.personalBest.depth, run.depth),
+        }
+      : save.personalBest,
+    survivalBest:
+      run.mode === 'survival'
+        ? {
+            answers: Math.max(save.survivalBest.answers, accepted),
+            points: Math.max(save.survivalBest.points, run.points),
+            depth: Math.max(save.survivalBest.depth, run.depth),
+          }
+        : save.survivalBest,
     lifetime: {
       depth: save.lifetime.depth + run.depth,
       points: save.lifetime.points + run.points,
@@ -193,13 +251,14 @@ export function applyFinishedRun(save: SaveData, run: RunState, now: number): Sa
     tierTotals,
     unknownAnswers,
     appliedRunIds: [...save.appliedRunIds, run.id].slice(-MAX_APPLIED),
-    deepestEver: Math.max(save.deepestEver, run.depth),
+    deepestEver: countsForBests ? Math.max(save.deepestEver, run.depth) : save.deepestEver,
   };
+  return evaluateAchievements(applyRunToWeekly(applied, run, now), now, run);
 }
 
-/** XP is points plus a small bonus per distinct discovery. Level n needs 100·(n−1)² XP in total. */
+/** XP is points, a small bonus per distinct discovery, and claimed weekly missions. Level n needs 100·(n−1)² XP in total. */
 export function xpOf(save: SaveData): number {
-  return save.lifetime.points + Object.keys(save.collection).length * 25;
+  return save.lifetime.points + Object.keys(save.collection).length * 25 + save.bonusXp;
 }
 
 export function levelFromXp(xp: number): { level: number; into: number; needed: number } {
@@ -250,6 +309,13 @@ export function migrate(parsed: unknown): SaveData {
     lifetime: { ...base.lifetime, ...(p.lifetime ?? {}) },
     tierTotals: { ...base.tierTotals, ...(p.tierTotals ?? {}) },
     intro: { ...base.intro, ...(p.intro ?? {}) },
+    look: { ...base.look, ...(p.look ?? {}) },
+    weekly: { ...base.weekly, ...(p.weekly ?? {}) },
+    base: { ...base.base, ...(p.base ?? {}) },
+    survivalBest: { ...base.survivalBest, ...(p.survivalBest ?? {}) },
+    achievements: p.achievements ?? {},
+    unlockedCosmetics: Array.isArray(p.unlockedCosmetics) ? p.unlockedCosmetics : [],
+    challenges: p.challenges ?? {},
     dailyResults: p.dailyResults ?? {},
     collection: p.collection ?? {},
     unknownAnswers: Array.isArray(p.unknownAnswers) ? p.unknownAnswers : [],

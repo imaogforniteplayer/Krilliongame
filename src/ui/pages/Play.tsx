@@ -3,7 +3,11 @@ import type { FormEvent } from 'react';
 import { audio } from '../../game/audio/audio';
 import { biomeAtDepth, nextBiome } from '../../game/biomes/biomes';
 import type { Biome } from '../../game/biomes/biomes';
-import { selectDailyQuestions, selectRandomQuestions } from '../../game/daily/challenge';
+import { selectChallengeQuestions, selectDailyQuestions, selectRandomQuestions, selectSurvivalQuestions } from '../../game/daily/challenge';
+import { EMOTE_MOOD } from '../../game/cosmetics/cosmetics';
+import { getPack, questionsForPack } from '../../game/packs';
+import { finalizeRun } from '../../game/progression/finalize';
+import type { Finalized } from '../../game/progression/finalize';
 import { EQUIPMENT_BY_TIER } from '../../game/digging/equipment';
 import { getDiscovery } from '../../game/discoveries/discoveries';
 import type { DiscoveryItem } from '../../game/discoveries/discoveries';
@@ -15,25 +19,37 @@ import {
   currentQuestionId,
   isFinished,
   startQuestionClock,
+  SURVIVAL_LIVES,
   submitAnswer,
   timeLeftMs,
 } from '../../game/session';
 import type { AnswerRecord, RunMode, RunState } from '../../game/session';
-import { applyFinishedRun, levelFromXp, xpOf } from '../../game/storage';
+import { levelFromXp, xpOf } from '../../game/storage';
 import { TIER_COLORS } from '../../game/tiers';
 import { formatMetres } from '../../game/scoring/scoring';
 import { DigCanvas } from '../components/DigCanvas';
 import { TierBadge } from '../components/TierBadge';
-import { discoveryIconUrl } from '../icons';
+import { discoveryIconUrl, heartUrl } from '../icons';
 import { navigate } from '../router';
-import { useDailyKey, useSave } from '../store';
+import { useDailyKey, useLook, useSave } from '../store';
+import { ChallengeDone } from './Challenge';
 import { Results } from './Results';
 
 const MODE_LABEL: Record<RunMode, string> = {
   daily: 'Daily Dig',
   endless: 'Endless Dig',
   practice: 'Practice',
+  survival: 'Survival Dig',
+  challenge: 'Challenge',
 };
+
+/** What the page was asked to play beyond the mode itself. */
+export interface PlayTarget {
+  /** Themed pack id (Endless Dig restricted to one pack). */
+  packId?: string;
+  /** Friend Challenge code. */
+  code?: string;
+}
 
 type Phase = 'loading' | 'walking' | 'asking' | 'revealing' | 'digging' | 'feedback' | 'finishing';
 
@@ -41,16 +57,18 @@ interface Fresh {
   run: RunState;
   personalBest: boolean;
   levelUp: boolean;
+  extras?: Finalized;
 }
 
 /** Chooses between a finished-run screen and a live run. Remounts a live run when `attempt` changes. */
-export function Play({ mode }: { mode: RunMode }) {
+export function Play({ mode, packId, code }: { mode: RunMode } & PlayTarget) {
   const { save } = useSave();
   const dayKey = useDailyKey();
   const [attempt, setAttempt] = useState(0);
   const [fresh, setFresh] = useState<Fresh | null>(null);
 
   const stored = mode === 'daily' ? save.dailyResults[dayKey] : undefined;
+  const challengeDone = mode === 'challenge' && code ? save.challenges[code] : undefined;
 
   if (fresh) {
     return (
@@ -59,8 +77,9 @@ export function Play({ mode }: { mode: RunMode }) {
         mode={mode}
         personalBest={fresh.personalBest}
         levelUp={fresh.levelUp}
+        extras={fresh.extras}
         onAgain={
-          mode === 'daily'
+          mode === 'daily' || mode === 'challenge'
             ? undefined
             : () => {
                 setFresh(null);
@@ -71,47 +90,68 @@ export function Play({ mode }: { mode: RunMode }) {
     );
   }
   if (stored) return <Results run={stored.run} mode="daily" alreadyPlayed />;
+  if (challengeDone) return <ChallengeDone code={challengeDone.code} />;
+  if (mode === 'challenge' && !code) return <ChallengeDone code="" />;
 
   return (
     <PlayRun
-      key={`${mode}-${attempt}`}
+      key={`${mode}-${packId ?? code ?? ''}-${attempt}`}
       mode={mode}
       dayKey={dayKey}
-      onFinished={(run, personalBest, levelUp) => setFresh({ run, personalBest, levelUp })}
+      packId={packId}
+      code={code}
+      onFinished={(run, personalBest, levelUp, extras) => setFresh({ run, personalBest, levelUp, extras })}
     />
   );
 }
 
-function initialRun(mode: RunMode, dayKey: string, active: RunState | null): RunState {
-  if (mode === 'daily' && active && active.mode === 'daily' && active.key === dayKey && !isFinished(active)) {
+function initialRun(mode: RunMode, dayKey: string, active: RunState | null, target: PlayTarget): RunState {
+  // Ranked daily runs and friend challenges resume after a refresh instead of granting a free restart.
+  const resumeKey = mode === 'daily' ? dayKey : mode === 'challenge' ? target.code : undefined;
+  if (resumeKey && active && active.mode === mode && active.key === resumeKey && !isFinished(active)) {
     const intact = active.questionIds.every((id) => !!getQuestion(id));
     if (intact) return active;
   }
   const pool = activeQuestions();
-  const questions =
-    mode === 'daily' ? selectDailyQuestions(dayKey, pool) : selectRandomQuestions(pool);
-  return createRun({
-    mode,
-    key: mode === 'daily' ? dayKey : `${mode}-${new Date().toISOString().slice(0, 10)}`,
-    questions,
-    now: Date.now(),
-  });
+  const today = new Date().toISOString().slice(0, 10);
+  let questions;
+  let key = `${mode}-${today}`;
+  if (mode === 'daily') {
+    questions = selectDailyQuestions(dayKey, pool);
+    key = dayKey;
+  } else if (mode === 'challenge' && target.code) {
+    questions = selectChallengeQuestions(target.code, pool);
+    key = target.code;
+  } else if (mode === 'survival') {
+    questions = selectSurvivalQuestions(pool);
+  } else {
+    const pack = target.packId ? getPack(target.packId) : undefined;
+    const themed = pack ? questionsForPack(pack, pool) : pool;
+    questions = selectRandomQuestions(themed.length >= GAME_CONFIG.questionsPerRun ? themed : pool);
+    if (pack) key = `pack:${pack.id}-${today}`;
+  }
+  return createRun({ mode, key, questions, now: Date.now() });
 }
 
 function PlayRun({
   mode,
   dayKey,
+  packId,
+  code,
   onFinished,
 }: {
   mode: RunMode;
   dayKey: string;
-  onFinished: (run: RunState, personalBest: boolean, levelUp: boolean) => void;
-}) {
+  onFinished: (run: RunState, personalBest: boolean, levelUp: boolean, extras: Finalized) => void;
+} & PlayTarget) {
   const { save, update, reducedMotion } = useSave();
+  const look = useLook();
+  const lookRef = useRef(look);
+  lookRef.current = look;
   const saveRef = useRef(save);
   saveRef.current = save;
 
-  const [run, setRun] = useState<RunState>(() => initialRun(mode, dayKey, save.activeRun));
+  const [run, setRun] = useState<RunState>(() => initialRun(mode, dayKey, save.activeRun, { packId, code }));
   const runRef = useRef(run);
   const [phase, setPhase] = useState<Phase>('loading');
   const phaseRef = useRef<Phase>('loading');
@@ -158,8 +198,8 @@ function PlayRun({
     (next: RunState) => {
       runRef.current = next;
       setRun(next);
-      // Only the ranked daily run is resumable, so Endless / Practice never overwrite it.
-      if (mode === 'daily' && !isFinished(next)) update((s) => ({ ...s, activeRun: next }));
+      // Only ranked daily runs and friend challenges are resumable, so other modes never overwrite them.
+      if ((mode === 'daily' || mode === 'challenge') && !isFinished(next)) update((s) => ({ ...s, activeRun: next }));
     },
     [mode, update],
   );
@@ -185,16 +225,17 @@ function PlayRun({
       const r = rendererRef.current;
       const before = saveRef.current;
       const now = Date.now();
-      const after = applyFinishedRun(before, finalRun, now);
-      const personalBest = finalRun.points > before.personalBest.points;
-      const levelUp = levelFromXp(xpOf(after)).level > levelFromXp(xpOf(before)).level;
-      r?.react('victory', 1600);
+      const done = finalizeRun(before, finalRun, now);
+      // Survival has its own record, so it never counts as a "personal best" for the standard run.
+      const personalBest = finalRun.mode !== 'survival' && finalRun.points > before.personalBest.points;
+      const levelUp = levelFromXp(xpOf(done.save)).level > levelFromXp(xpOf(before)).level;
+      r?.react(EMOTE_MOOD[lookRef.current.emote] ?? 'victory', 1600);
       audio.sfx('victory');
       await wait(fastRef.current ? 400 : 1700);
       if (!alive.current) return;
-      update((s) => applyFinishedRun(s, finalRun, now));
+      update((s) => finalizeRun(s, finalRun, now).save);
       if (levelUp) audio.sfx('levelup');
-      onFinished(finalRun, personalBest, levelUp);
+      onFinished(finalRun, personalBest, levelUp, done);
     },
     [onFinished, setPhaseBoth, update, wait],
   );
@@ -297,6 +338,7 @@ function PlayRun({
       void (async () => {
         const current = runRef.current;
         audio.startMusic(biomeAtDepth(current.depth).index);
+        r.setLook(lookRef.current);
         r.reset();
         r.setDepth(current.depth);
         if (current.answers.length === 0) {
@@ -373,7 +415,14 @@ function PlayRun({
         </button>
         <div className="play__progress" aria-label={`Question ${shownIndex} of ${total}`}>
           <span className="play__mode">{MODE_LABEL[mode]}</span>
-          <div className="pips">
+          {run.lives !== undefined ? (
+            <div className="hearts" role="img" aria-label={`${run.lives} lives left`}>
+              {Array.from({ length: SURVIVAL_LIVES }, (_, i) => (
+                <img key={i} className="pixel-img heart" src={heartUrl(i < (run.lives ?? 0))} alt="" />
+              ))}
+            </div>
+          ) : null}
+          <div className={`pips${run.lives !== undefined ? ' pips--survival' : ''}`}>
             {run.questionIds.map((id, i) => {
               const a = run.answers[i];
               const color = a ? (a.tier ? TIER_COLORS[a.tier] : '#5a5470') : undefined;
@@ -386,9 +435,7 @@ function PlayRun({
               );
             })}
           </div>
-          <span className="play__q">
-            Q{shownIndex}/{total}
-          </span>
+          <span className="play__q">{run.lives !== undefined ? `Q${shownIndex}` : `Q${shownIndex}/${total}`}</span>
         </div>
         <div className="play__score">
           <span>

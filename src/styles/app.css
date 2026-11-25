@@ -272,3 +272,59 @@ img.pixel-img, canvas { image-rendering: pixelated; image-rendering: crisp-edges
   .play { height: 100dvh; align-content: stretch; }
   .play__stage, .play__panel { height: calc(100dvh - 100px); }
 }
+
+/* ---------- Modes, packs, garage, journal, base ---------- */
+.packs, .missions, .badges, .journal, .cosmetics, .den { list-style: none; margin: 0; padding: 0; }
+.packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.pack { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--panel2); padding: 10px 12px; }
+.pack div { display: flex; flex-direction: column; gap: 2px; }
+.pack span { color: var(--muted); font-size: 19px; }
+
+.hearts { display: flex; gap: 4px; align-items: center; }
+.heart { width: 21px; height: 18px; }
+.pips--survival { max-width: 40vw; flex-wrap: wrap; }
+.reward { display: flex; align-items: center; gap: 10px; }
+.reward__icon { height: 36px; width: auto; }
+
+.garage__preview { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.preview { width: min(100%, 400px); height: auto; aspect-ratio: 80 / 56; background: #3a2a1c; box-shadow: 0 0 0 4px var(--edge); }
+.garage__moods { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cosmetics { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cosmetic { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; font: inherit; color: var(--text); background: var(--panel2); border: 3px solid var(--edge); padding: 10px; cursor: pointer; }
+.cosmetic:hover:not(:disabled) { border-color: var(--cyan); }
+.cosmetic--on { border-color: var(--gold); background: #3a2f70; }
+.cosmetic--locked { opacity: 0.55; cursor: not-allowed; }
+.cosmetic__name { font-size: 22px; }
+.cosmetic__note { font-size: 17px; color: var(--muted); }
+.swatch { display: inline-flex; height: 28px; min-width: 28px; }
+.swatch i { display: block; width: 14px; height: 28px; }
+.swatch--img { height: 28px; width: auto; object-fit: contain; }
+.swatch--none { border: 3px dashed var(--line); width: 28px; }
+
+.mission { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 2px solid var(--edge); }
+.mission > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cal__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal__dow { text-align: center; color: var(--muted); font-size: 18px; }
+.cal__day { text-align: center; padding: 4px 0; background: var(--panel2); font-size: 20px; }
+.cal__day--done { background: var(--good); color: #0b2a14; font-weight: bold; }
+.cal__day--today { outline: 3px solid var(--gold); }
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.badge { display: flex; flex-direction: column; gap: 4px; background: var(--panel2); padding: 10px 12px; opacity: 0.75; }
+.badge--got { opacity: 1; border-left: 4px solid var(--gold); }
+.badge span { color: var(--muted); font-size: 19px; }
+.journal li { display: flex; gap: 12px; align-items: center; padding: 4px 0; }
+.chip--good { border-color: var(--good); }
+.chip--btn { font: inherit; color: var(--text); background: var(--panel2); cursor: pointer; }
+.chip--btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.chip--on { background: #3a2f70; outline: 2px solid var(--gold); }
+
+.rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 12px 4px; }
+.room { background: linear-gradient(180deg, var(--wall, #4a3322) 0 78%, var(--floor, #2f2015) 78% 100%); padding: 12px 14px 22px; box-shadow: 0 0 0 4px var(--edge); border-top: 6px solid var(--accent, #c9904a); }
+.room--locked { opacity: 0.5; filter: grayscale(0.7); }
+.room__title { font-family: var(--font-head); font-size: 11px; line-height: 1.6; margin: 0 0 6px; color: var(--accent, var(--gold)); }
+.room__body { display: flex; gap: 12px; align-items: center; }
+.room__miner { width: 56px; height: auto; flex: none; }
+.den { display: flex; flex-wrap: wrap; gap: 14px; }
+.den li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 18px; }
+.den__pet { height: 40px; width: auto; }

@@ -20,10 +20,14 @@ Runs fully in the browser in **local demo mode** (no account, no server). Progre
 | Synthesised sound effects and ambient music (Web Audio, no audio files) | Working |
 | Results screen with explanations, shareable pixel card (PNG) and spoiler-free share text | Working |
 | Museum (34 discoveries), biome map, stats, streaks, XP/levels, settings, reduced motion | Working |
-| 108 curated questions across 11 categories | Working |
+| 110 curated questions across 11 categories, 12 themed Dig packs | Working |
 | Local admin view (review queue, question browser, rules) | Working, read-only, no auth |
-| Leaderboards, friends, Friend Challenge, Live Duel, Squad, Community Excavation, accounts, real-player rarity | **Not built.** Needs the backend (`docs/BACKEND.md`). The UI says so and shows no fake players |
-| Character customisation, pets, personal base, seasonal events, PWA | Not built |
+| Survival Dig (3 lives, questions get harder), themed packs, Friend Challenge by shareable code | Working. Challenge results are swapped by hand and are **not server-verified** |
+| Garage (41 cosmetics, 7 pets, backpacks, trail effects, emotes), live preview, animated pets that follow the miner | Working. Cosmetics never affect scoring |
+| 22 achievements with wearable titles, weekly missions, daily mystery reward, Daily Dig calendar, personal base | Working |
+| Installable PWA with offline play (manifest, service worker, icons) | Working in production builds |
+| Leaderboards (global, weekly, friends), Live Dig Duel, Squad Expedition, Community Excavation, accounts and sync, real-player rarity, admin editing | **Not built.** Needs the backend (`docs/BACKEND.md`). The UI says so and shows no fake players |
+| Seasonal events, limited-time biomes | Not built |
 
 See `GAME_DESIGN.md` for how the rules work.
 
@@ -34,7 +38,7 @@ Requires Node 20+.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # unit tests (Node's built-in runner via tsx)
+npm test           # 102 unit tests (Node built-in runner via tsx)
 npm run typecheck
 npm run build      # outputs dist/
 npm run preview    # serve the production build
@@ -97,7 +101,11 @@ switched on. Never put a service-role key in browser code.
 
 ```
 src/game/            pure rules: questions, answerValidation, rarity, scoring, daily, session, storage
-src/game/render/     Canvas renderer, miner and machines, particles
+src/game/render/     Canvas renderer, miner and machines, pets, trail effects, particles
+src/game/cosmetics/  cosmetic catalogue, unlock rules, mystery rewards
+src/game/progression/ achievements, weekly missions, run finalisation
+src/game/challenge/  Friend Challenge codes and result codes
+src/game/base/       personal base rooms and themes
 src/game/pixel/      sprites, terrain tiles, pixel font
 src/game/audio/      Web Audio sound engine
 src/ui/              React app: pages, components, store, router, share card

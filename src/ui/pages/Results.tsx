@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { biomeAtDepth } from '../../game/biomes/biomes';
 import { msUntilNextDaily } from '../../game/daily/challenge';
 import { EQUIPMENT_BY_TIER } from '../../game/digging/equipment';
+import { getCosmetic } from '../../game/cosmetics/cosmetics';
 import { getDiscovery } from '../../game/discoveries/discoveries';
+import { getAchievement, nextAchievement } from '../../game/progression/achievements';
+import type { Finalized } from '../../game/progression/finalize';
 import { getQuestion } from '../../game/questions';
 import { computeRarity } from '../../game/rarity/rarity';
 import { formatMetres, maxRunDepth, maxRunPoints } from '../../game/scoring/scoring';
@@ -13,10 +16,11 @@ import { TIER_COLORS } from '../../game/tiers';
 import type { EquipmentId } from '../../game/types';
 import { Meter, Panel, Stat } from '../components/Panel';
 import { TierBadge } from '../components/TierBadge';
-import { discoveryIconUrl } from '../icons';
+import { discoveryIconUrl, petIconUrl } from '../icons';
 import { navigate } from '../router';
 import { copyText, downloadCard, nativeShare, renderShareCard, shareText } from '../share';
 import { useNow, useSave } from '../store';
+import { ChallengePanel } from './Challenge';
 
 const EQUIPMENT_NAME: Record<EquipmentId, string> = Object.fromEntries(
   Object.values(EQUIPMENT_BY_TIER).map((e) => [e.id, e.name]),
@@ -106,6 +110,7 @@ export function Results({
   personalBest = false,
   levelUp = false,
   alreadyPlayed = false,
+  extras,
   onAgain,
 }: {
   run: RunState;
@@ -113,6 +118,8 @@ export function Results({
   personalBest?: boolean;
   levelUp?: boolean;
   alreadyPlayed?: boolean;
+  /** Achievements and unlocks this run earned (only known right after finishing). */
+  extras?: Finalized;
   onAgain?: () => void;
 }) {
   const { save } = useSave();
@@ -123,6 +130,11 @@ export function Results({
   const lvl = levelFromXp(xpOf(save));
   const found = summary.discoveryIds.map((id) => getDiscovery(id)).filter((d): d is NonNullable<typeof d> => !!d);
   const url = typeof window === 'undefined' ? '' : window.location.origin + window.location.pathname;
+  const survival = mode === 'survival';
+  const next = useMemo(() => nextAchievement(save), [save]);
+  const earned = (extras?.newAchievements ?? []).map((id) => getAchievement(id)).filter((a): a is NonNullable<typeof a> => !!a);
+  const unlocked = (extras?.newCosmetics ?? []).map((id) => getCosmetic(id)).filter((c): c is NonNullable<typeof c> => !!c);
+  const reward = extras?.reward ? getCosmetic(extras.reward) : undefined;
 
   async function copy() {
     const ok = await copyText(shareText(run, url));
@@ -133,7 +145,7 @@ export function Results({
   return (
     <div className="page results">
       <header className="results__head">
-        <h1 className="title">{mode === 'daily' ? 'Daily Dig complete' : 'Run complete'}</h1>
+        <h1 className="title">{mode === 'daily' ? 'Daily Dig complete' : survival ? 'Survival over' : mode === 'challenge' ? 'Challenge complete' : 'Run complete'}</h1>
         {alreadyPlayed ? (
           <p className="notice">Your ranked Daily Dig for {run.key} is already done. Next one in {countdown(msUntilNextDaily(new Date(now)))}.</p>
         ) : null}
@@ -144,10 +156,14 @@ export function Results({
       <div className="results__grid">
         <Panel title="Your dig">
           <div className="stats">
-            <Stat label="Total score" value={`${run.points}`} hint={`of ${maxRunPoints()}`} />
-            <Stat label="Final depth" value={formatMetres(run.depth)} hint={`of ${formatMetres(maxRunDepth())}`} />
+            <Stat label="Total score" value={`${run.points}`} hint={survival ? undefined : `of ${maxRunPoints()}`} />
+            <Stat label="Final depth" value={formatMetres(run.depth)} hint={survival ? undefined : `of ${formatMetres(maxRunDepth())}`} />
             <Stat label="Final biome" value={biome.name} />
-            <Stat label="Personal best" value={`${save.personalBest.points} pts`} hint={formatMetres(save.personalBest.depth)} />
+            {survival ? (
+              <Stat label="Survival best" value={`${save.survivalBest.answers} correct`} hint={`${save.survivalBest.points} pts`} />
+            ) : (
+              <Stat label="Personal best" value={`${save.personalBest.points} pts`} hint={formatMetres(save.personalBest.depth)} />
+            )}
           </div>
           <div className="results__rows">
             <p>
@@ -205,6 +221,48 @@ export function Results({
         </Panel>
       </div>
 
+      {mode === 'challenge' ? <ChallengePanel code={run.key} points={run.points} depth={run.depth} /> : null}
+
+      {earned.length > 0 || unlocked.length > 0 || reward ? (
+        <Panel title="Rewards">
+          {reward ? (
+            <p className="reward">
+              <b>Daily mystery reward:</b> {reward.name}
+              {petIconUrl(reward.id) ? <img className="pixel-img reward__icon" src={petIconUrl(reward.id) as string} alt="" /> : null}
+            </p>
+          ) : null}
+          {earned.length > 0 ? (
+            <ul className="chips">
+              {earned.map((a) => (
+                <li key={a.id} className="chip chip--good" title={a.description}>
+                  Achievement: {a.name}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {unlocked.length > 0 ? (
+            <p>
+              <b>Unlocked in the Garage:</b> {unlocked.map((c) => c.name).join(', ')}
+            </p>
+          ) : null}
+          <button type="button" className="btn btn--small" onClick={() => navigate('garage')}>
+            Open Garage
+          </button>
+        </Panel>
+      ) : null}
+
+      {next ? (
+        <Panel title="Next achievement">
+          <p>
+            <b>{next.achievement.name}</b>: {next.achievement.description}
+          </p>
+          <Meter value={next.value} max={next.target} label={`Progress towards ${next.achievement.name}`} />
+          <p className="muted">
+            {next.value.toLocaleString('en-US')} / {next.target.toLocaleString('en-US')}
+          </p>
+        </Panel>
+      ) : null}
+
       {found.length > 0 ? (
         <Panel title={`Discoveries (${found.length})`}>
           <ul className="finds">
@@ -235,13 +293,13 @@ export function Results({
             Dig again
           </button>
         ) : null}
-        {mode === 'daily' ? (
+        {mode === 'daily' || mode === 'challenge' ? (
           <>
             <button type="button" className="btn" onClick={() => navigate('play/endless')}>
               Endless Dig
             </button>
-            <button type="button" className="btn" onClick={() => navigate('play/practice')}>
-              Practice
+            <button type="button" className="btn" onClick={() => navigate('modes')}>
+              More modes
             </button>
           </>
         ) : null}

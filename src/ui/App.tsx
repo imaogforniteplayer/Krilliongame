@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
+import { parseChallengeCode } from '../game/challenge/code';
 import { navigate, useRoute } from './router';
 import { useSave } from './store';
 import { Home } from './pages/Home';
@@ -13,12 +14,20 @@ const BiomeMap = lazy(() => import('./pages/BiomeMap').then((m) => ({ default: m
 const Stats = lazy(() => import('./pages/Stats').then((m) => ({ default: m.Stats })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const Admin = lazy(() => import('./pages/Admin').then((m) => ({ default: m.Admin })));
+const Modes = lazy(() => import('./pages/Modes').then((m) => ({ default: m.Modes })));
+const Garage = lazy(() => import('./pages/Garage').then((m) => ({ default: m.Garage })));
+const Journal = lazy(() => import('./pages/Journal').then((m) => ({ default: m.Journal })));
+const Base = lazy(() => import('./pages/Base').then((m) => ({ default: m.Base })));
 const Soon = lazy(() => import('./pages/Soon').then((m) => ({ default: m.Soon })));
 
 const NAV: { to: string; label: string; match: string }[] = [
   { to: 'home', label: 'Home', match: 'home' },
   { to: 'play/daily', label: 'Daily Dig', match: 'play' },
+  { to: 'modes', label: 'Modes', match: 'modes' },
   { to: 'museum', label: 'Museum', match: 'museum' },
+  { to: 'garage', label: 'Garage', match: 'garage' },
+  { to: 'base', label: 'Base', match: 'base' },
+  { to: 'journal', label: 'Journal', match: 'journal' },
   { to: 'biomes', label: 'Biomes', match: 'biomes' },
   { to: 'stats', label: 'Stats', match: 'stats' },
   { to: 'soon', label: 'Online', match: 'soon' },
@@ -55,8 +64,28 @@ export function App() {
       page = <Home />;
       break;
     case 'play':
-      page =
-        second === 'endless' || second === 'practice' || second === 'daily' ? <Play key={second} mode={second} /> : <Home />;
+      if (second === 'endless' || second === 'practice' || second === 'daily' || second === 'survival') {
+        page = <Play key={second} mode={second} />;
+      } else if (second === 'pack' && third) {
+        page = <Play key={`pack-${third}`} mode="endless" packId={third} />;
+      } else if (second === 'challenge') {
+        const code = parseChallengeCode(third);
+        page = <Play key={`challenge-${code ?? 'none'}`} mode="challenge" code={code ?? undefined} />;
+      } else {
+        page = <Home />;
+      }
+      break;
+    case 'modes':
+      page = <Modes />;
+      break;
+    case 'garage':
+      page = <Garage />;
+      break;
+    case 'journal':
+      page = <Journal />;
+      break;
+    case 'base':
+      page = <Base />;
       break;
     case 'results':
       page = <SavedResult keyParam={third || second} />;

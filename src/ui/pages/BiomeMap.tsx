@@ -4,7 +4,7 @@ import { useSave } from '../store';
 
 export function BiomeMap() {
   const { save } = useSave();
-  const deepest = save.deepestEver;
+  const deepest = Math.max(save.deepestEver, save.survivalBest.depth);
   const current = biomeAtDepth(deepest);
   return (
     <div className="page">

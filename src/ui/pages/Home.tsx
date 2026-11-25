@@ -82,19 +82,25 @@ export function Home() {
               Open museum
             </button>
             <button type="button" className="btn btn--small" onClick={() => navigate('biomes')}>
-              Biome map ({BIOMES.filter((b) => save.deepestEver >= b.startDepth).length}/{BIOMES.length})
+              Biome map ({BIOMES.filter((b) => Math.max(save.deepestEver, save.survivalBest.depth) >= b.startDepth).length}/{BIOMES.length})
             </button>
           </div>
         </Panel>
 
-        <Panel title="Practice">
-          <p className="muted">Unlimited runs with random questions. They never touch your ranked daily.</p>
+        <Panel title="More ways to dig">
+          <p className="muted">Endless, Survival, themed packs and Friend Challenges. Your ranked daily is never affected.</p>
           <div className="btn-row">
+            <button type="button" className="btn btn--small" onClick={() => navigate('modes')}>
+              All modes
+            </button>
             <button type="button" className="btn btn--small" onClick={() => navigate('play/endless')}>
               Endless Dig
             </button>
-            <button type="button" className="btn btn--small" onClick={() => navigate('play/practice')}>
-              Practice
+            <button type="button" className="btn btn--small" onClick={() => navigate('journal')}>
+              Journal
+            </button>
+            <button type="button" className="btn btn--small" onClick={() => navigate('garage')}>
+              Garage
             </button>
           </div>
         </Panel>

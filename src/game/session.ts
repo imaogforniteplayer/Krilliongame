@@ -8,7 +8,10 @@ import { validateAnswer } from './answerValidation/validate';
 import { TIER_ORDER } from './types';
 import type { AnswerStatus, EquipmentId, Question, QuestionStats, RarityResult, RarityTier } from './types';
 
-export type RunMode = 'daily' | 'endless' | 'practice';
+export type RunMode = 'daily' | 'endless' | 'practice' | 'survival' | 'challenge';
+
+/** Survival Dig: how many wrong answers a run survives. */
+export const SURVIVAL_LIVES = 3;
 
 /** One finished question. Stored with the rule versions so old results stay explainable. */
 export interface AnswerRecord {
@@ -49,6 +52,8 @@ export interface RunState {
   /** Wall-clock ms when the current question was shown; null until the UI shows it. */
   questionStartedAt: number | null;
   finishedAt: number | null;
+  /** Only set in Survival Dig: lives left. A wrong answer or timeout costs one; zero ends the run. */
+  lives?: number;
   scoringVersion: string;
   rarityVersion: string;
 }
@@ -64,6 +69,7 @@ export function createRun(opts: {
   now: number;
   id?: string;
 }): RunState {
+  const survival = opts.mode === 'survival';
   return {
     id: opts.id ?? newRunId(),
     mode: opts.mode,
@@ -76,6 +82,7 @@ export function createRun(opts: {
     startedAt: opts.now,
     questionStartedAt: null,
     finishedAt: null,
+    ...(survival ? { lives: SURVIVAL_LIVES } : {}),
     scoringVersion: GAME_CONFIG.scoringVersion,
     rarityVersion: GAME_CONFIG.rarityVersion,
   };
@@ -130,9 +137,11 @@ const RETRY_MESSAGES = {
 function finishRecord(run: RunState, record: AnswerRecord, now: number): RunState {
   const answers = [...run.answers, record];
   const index = run.index + 1;
-  const done = index >= run.questionIds.length;
+  const lives = run.lives === undefined ? undefined : record.status === 'accepted' ? run.lives : run.lives - 1;
+  const done = index >= run.questionIds.length || (lives !== undefined && lives <= 0);
   return {
     ...run,
+    ...(lives !== undefined ? { lives } : {}),
     answers,
     index,
     depth: record.depthAfter,

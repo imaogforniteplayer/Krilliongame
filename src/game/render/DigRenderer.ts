@@ -11,8 +11,11 @@ import { depthForPoints, pointsForTier } from '../scoring/scoring';
 import { TIER_COLORS } from '../tiers';
 import type { EquipmentId, RarityTier } from '../types';
 import type { DiggerState, Mood } from './actors';
-import { drawDigger } from './actors';
+import { drawDigger, setMinerLook } from './actors';
 import { ParticleSystem } from './particles';
+import { drawPet } from './pets';
+import { spawnTrail } from './effects';
+import type { Look } from '../cosmetics/cosmetics';
 
 /** Pixels of scroll per metre of depth. Chosen so a Pebble dig (100 m) is a satisfying small step. */
 export const PX_PER_M = 0.9;
@@ -91,6 +94,10 @@ export class DigRenderer {
   private demo = false;
   private destroyed = false;
   private smokeAcc = 0;
+  private look: Look | null = null;
+  private petX = -40;
+  private fx = new ParticleSystem();
+  private fxAcc = 0;
 
   constructor(private canvas: HTMLCanvasElement, private hooks: RendererHooks = {}, reducedMotion = false) {
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -98,6 +105,13 @@ export class DigRenderer {
     this.ctx = ctx;
     this.reduced = reducedMotion;
     this.ambient.cap = 90;
+    this.fx.cap = 70;
+  }
+
+  /** Applies the player's cosmetics: outfit colours, backpack, pet and trail effect. */
+  setLook(look: Look): void {
+    this.look = look;
+    setMinerLook(look);
   }
 
   // -------------------------------------------------------------------------------------------
@@ -165,12 +179,15 @@ export class DigRenderer {
     this.heldItem = null;
     this.mood = 'idle';
     this.minerX = Math.round((this.w - RULER_W) / 2);
+    this.fx.clear();
+    this.petX = this.minerX - this.petOffset();
   }
 
   /** The miner walks out of the left edge of the screen to the mine entrance. */
   walkIn(): Promise<void> {
     if (this.reduced) { this.minerX = this.centerX(); return Promise.resolve(); }
     this.minerX = -12;
+    this.petX = -12 - this.petOffset();
     this.mood = 'walk';
     return new Promise((resolve) => { this.walkTarget = { x: this.centerX(), resolve }; });
   }
@@ -293,6 +310,7 @@ export class DigRenderer {
     this.flash = Math.max(0, this.flash - dt * 2.2);
     this.particles.update(dt);
     this.updateAmbient(dt);
+    this.updatePetAndFx(dt);
 
     const biome = biomeAtDepth(this.depth);
     if (biome.index !== this.lastBiome) {
@@ -523,6 +541,7 @@ export class DigRenderer {
     this.drawShaft(topWorld, camY);
     if (groundY > -40) this.drawEntrance(groundY);
     this.drawActor();
+    this.fx.draw(ctx);
     this.particles.draw(ctx);
     this.ambient.draw(ctx);
     ctx.restore();
@@ -686,7 +705,34 @@ export class DigRenderer {
     this.lamps.push({ x: cx - half - 2, y: groundY - 22 });
   }
 
+  /** How far behind the miner the pet waits. Machines are wide, so the pet keeps clear of them. */
+  private petOffset(): number {
+    return this.tool === 'tunnel-borer' ? 42 : this.tool === 'excavator' ? 34 : 17;
+  }
+
+  private isExcited(): boolean {
+    return this.mood === 'work' || this.mood === 'victory' || this.mood === 'discover' || this.mood === 'surprise';
+  }
+
+  private updatePetAndFx(dt: number): void {
+    // The pet follows the miner with a little lag, so it trots after them when they walk in.
+    const target = this.minerX - this.petOffset();
+    this.petX += (target - this.petX) * Math.min(1, dt * (this.mood === 'walk' ? 6 : 4));
+
+    const fxId = this.look?.effect ?? 'fx-none';
+    if (fxId === 'fx-none' || this.reduced) return;
+    this.fx.update(dt);
+    this.fxAcc += dt * (this.isExcited() ? 36 : 5);
+    while (this.fxAcc >= 1) {
+      this.fxAcc -= 1;
+      spawnTrail(this.fx, fxId, this.minerX, this.feetY, this.rnd);
+    }
+  }
+
   private drawActor(): void {
+    if (this.look && this.look.pet !== 'pet-none') {
+      drawPet(this.ctx, this.look.pet, Math.round(this.petX), this.feetY, this.time, this.isExcited(), this.mood === 'walk');
+    }
     const s: DiggerState = {
       x: Math.round(this.minerX),
       feetY: this.feetY,
